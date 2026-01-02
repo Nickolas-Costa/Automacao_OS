@@ -245,3 +245,5 @@ with sync_playwright() as p:
     # Parte 3 - Envio dos resultados via email
     enviar_email(resultados)
     browser.close()
+
+    print("Processo concluído com sucesso! Verifique seu email.")
