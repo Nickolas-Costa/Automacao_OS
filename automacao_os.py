@@ -231,9 +231,7 @@ with sync_playwright() as p:
     filtrar_engenharias(page)
     extrair_codigos_os(page)
     lista_os = extrair_codigos_os(page)
-    
-    print(lista_os)
-    
+        
     # Parte 2 - SIOPI
     page = context.new_page()
     login_siopi(page)
