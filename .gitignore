@@ -1,3 +1,6 @@
+.venv/
 .env
-Gravador de passos_passosConsulta.zip
-testeEmail.py
+# arquivos do sistema
+.DS_Store
+Thumbs.db
+os_list.txt
