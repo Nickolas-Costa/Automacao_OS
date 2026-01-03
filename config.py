@@ -17,6 +17,9 @@ Timeouts = {
 
 # SELETORES RAUZEE
 Locators_RAUZEE = {
+    "login_usuario": "#email",
+    "login_senha": "#password",
+    "botao_acessar": "Acessar",
     "search_button": 'input[placeholder="Pesquisar..."]',
     "engenharias_shortcut": "text=Listar engenharias",
     "status_filter": "xpath=//*[@aria-labelledby='assist']",
@@ -29,10 +32,20 @@ Locators_RAUZEE = {
 
 # SELETORES SIOPI
 Locators_SIOPI = {
+   "Frame": "mantemAlertaOriginacao.do",
+    "login_usuario": "#username",
+    "login_senha": "#password",
+    "botao_entrar": 'Entrar',
     "menu": "#btn_menu",
-    "num_os": "#num_os",
+    "submenu_servicos": 'text=Serviços',
+    "submenu_imoveis": 'Cadastro de Imóveis',
+    "submenu_os": 'Ordens de Serviço de Engenharia',
+    "input_os": "#num_os",
     "botao_consultar": "#botao0",
-    "status": 'xpath=//*[@id="formulario"]/fieldset/table[3]/tbody/tr/td[2]',
+    "status_OS": 'xpath=//*[@id="formulario"]/fieldset/table[3]/tbody/tr/td[2]',
+    "nome_cliente": 'xpath=//*[@id="formulario"]/fieldset/table[6]/tbody/tr[2]/td[2]',
+    "matricula": 'xpath=//*[@id="formulario"]/fieldset/table[5]/tbody/tr[1]/td[2]',
+    "data_abertura": 'xpath=//*[@id="formulario"]/fieldset/table[1]/tbody/tr[1]/td[4]',
 }
 
 formatters = {

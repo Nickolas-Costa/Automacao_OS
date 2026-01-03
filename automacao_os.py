@@ -25,37 +25,54 @@ RAUZEE_PASS = config.RAUZEE_PASS
 # LOGIN RAUZEE
 
 def login_rauzee(page):
-    if not RAUZEE_USER or not RAUZEE_PASS or RAUZEE_USER == "xxxx" or RAUZEE_PASS == "xxxx":
-        raise Exception("Credenciais do RAUZEE não encontradas no arquivo .env")
+    if not RAUZEE_USER or not RAUZEE_PASS:
+        raise EnvironmentError(
+        "Variáveis RAUZEE_USER ou RAUZEE_PASS não definidas. "
+        "Verifique o arquivo .env."
+    )
 
+    if RAUZEE_USER.lower() == "xxxx" or RAUZEE_PASS.lower() == "xxxx":
+        raise ValueError(
+        "Credenciais do RAUZEE ainda estão com valor placeholder (xxxx). "
+        "Atualize o arquivo .env antes de executar."
+    )
+    
     page.goto(URL_RAUZEE)
 
     # Aguarda os campos existirem
-    page.wait_for_selector("#email", timeout=Timeouts["PADRAO"])
-    page.fill("#email", RAUZEE_USER)
+    page.wait_for_selector(Locators_RAUZEE["login_usuario"], timeout=Timeouts["PADRAO"])
+    page.fill(Locators_RAUZEE["login_usuario"], RAUZEE_USER)
 
-    page.wait_for_selector("#password", timeout=Timeouts["PADRAO"])
-    page.fill("#password", RAUZEE_PASS)
-
-    page.get_by_text("Acessar").click()
+    page.wait_for_selector(Locators_RAUZEE["login_senha"], timeout=Timeouts["PADRAO"])
+    page.fill(Locators_RAUZEE["login_senha"], RAUZEE_PASS)
+    page.get_by_text(Locators_RAUZEE["botao_acessar"]).click()
     page.wait_for_load_state("networkidle")
 
 # LOGIN SIOPI
 
 def login_siopi(page):
-    if not SIOPI_USER or not SIOPI_PASS or SIOPI_USER == "xxxx" or SIOPI_PASS == "xxxx":
-        raise Exception("Credenciais do SIOPI não encontradas no arquivo .env")
+    if not SIOPI_USER or not SIOPI_PASS:
+        raise EnvironmentError(
+        "Variáveis SIOPI_USER ou SIOPI_PASS não definidas. "
+        "Verifique o arquivo .env."
+    )
+
+    if SIOPI_USER.lower() == "xxxx" or SIOPI_PASS.lower() == "xxxx":
+        raise ValueError(
+        "Credenciais do SIOPI ainda estão com valor placeholder (xxxx). "
+        "Atualize o arquivo .env antes de executar."
+    )
 
     page.goto(URL_SIOPI)
 
     # Aguarda os campos existirem
-    page.wait_for_selector("#username", timeout=Timeouts["PADRAO"])
-    page.fill("#username", SIOPI_USER)
+    page.wait_for_selector(Locators_SIOPI["login_usuario"], timeout=Timeouts["PADRAO"])
+    page.fill(Locators_SIOPI["login_usuario"], SIOPI_USER)
 
-    page.wait_for_selector("#password", timeout=Timeouts["PADRAO"])
-    page.fill("#password", SIOPI_PASS)
+    page.wait_for_selector(Locators_SIOPI["login_senha"], timeout=Timeouts["PADRAO"])
+    page.fill(Locators_SIOPI["login_senha"], SIOPI_PASS)
 
-    page.get_by_text("Entrar").click()
+    page.get_by_text(Locators_SIOPI["botao_entrar"]).click()
     page.wait_for_load_state("networkidle")
 
 # FUNÇÕES SIOPI
@@ -64,33 +81,34 @@ def login_siopi(page):
 def get_siopi_frame(page, tentativas=10):
     for _ in range(tentativas):
         for frame in page.frames:
-            if "mantemAlertaOriginacao.do" in frame.url:
+            if Locators_SIOPI["Frame"] in frame.url:
                 return frame
         page.wait_for_timeout(Timeouts["MEDIO"])
 
-    raise Exception("Frame principal do SIOPI não encontrado")
+    raise RuntimeError("Frame principal do SIOPI não encontrado após múltiplas tentativas."
+    "Possível mudança estrutural ou indisponibilidade do sistema.")
 
 def abrir_menu_e_navegar(page):
     frame = get_siopi_frame(page)
 
-    frame.wait_for_selector("#btn_menu", Timeouts["PADRAO"])
-    frame.locator("#btn_menu").click(force=True)
+    frame.wait_for_selector(Locators_SIOPI["menu"], Timeouts["PADRAO"])
+    frame.locator(Locators_SIOPI["menu"]).click(force=True)
     frame.wait_for_timeout(Timeouts["CURTO"])
 
-    frame.get_by_text("Serviços").hover()
+    frame.get_by_text(Locators_SIOPI["submenu_servicos"]).hover()
     frame.wait_for_timeout(Timeouts["CURTO"])
 
-    frame.get_by_text("Cadastro de Imóveis").hover()
+    frame.get_by_text(Locators_SIOPI["submenu_imoveis"]).hover()
     frame.wait_for_timeout(Timeouts["CURTO"])
 
-    frame.get_by_text("Ordens de Serviço de Engenharia").click()
+    frame.get_by_text(Locators_SIOPI["submenu_os"]).click()
     frame.wait_for_load_state("networkidle")
 
 def consultar_os(page, codigo_os):
     frame = get_siopi_frame(page)
-    
-    frame.fill("#num_os", codigo_os)
-    frame.locator("#botao0").click(force=True)
+
+    frame.fill(Locators_SIOPI["input_os"], codigo_os)
+    frame.locator(Locators_SIOPI["botao_consultar"]).click(force=True)
     frame.wait_for_timeout(Timeouts["LONGO"])
 
     frame.get_by_text(codigo_os).click()
@@ -99,27 +117,40 @@ def consultar_os(page, codigo_os):
 
     # coleta status da OS
     status = frame.locator(
-            'xpath=//*[@id="formulario"]/fieldset/table[3]/tbody/tr/td[2]'
+            Locators_SIOPI["status_OS"]
         ).inner_text()
 
     # coleta nome cliente da OS
     nome_cliente = frame.locator(
-        'xpath=//*[@id="formulario"]/fieldset/table[6]/tbody/tr[2]/td[2]'
+        Locators_SIOPI["nome_cliente"]
     ).inner_text().strip()
 
     # coleta matricula da OS
     matricula = frame.locator(
-        'xpath=//*[@id="formulario"]/fieldset/table[5]/tbody/tr[1]/td[2]'
+        Locators_SIOPI["matricula"]
     ).inner_text().strip()
 
     # coleta data abertura da OS
     data_abertura = frame.locator(
-        'xpath=//*[@id="formulario"]/fieldset/table[1]/tbody/tr[1]/td[4]'
+        Locators_SIOPI["data_abertura"]
     ).inner_text().strip()
    
+    logger.info(f"[SIOPI] Finalizando consulta da OS {codigo_os}. Tentando recarregar página.")
+
+    try:
     # volta para tela inicial
-    page.reload()
-    frame.wait_for_timeout(Timeouts["PADRAO"])
+        page.reload(timeout=Timeouts["LONGO"])
+        frame.wait_for_timeout(Timeouts["PADRAO"])
+        logger.info(f"[SIOPI] Reload executado com sucesso após OS: {codigo_os}")
+    except Exception as e:
+        logger.error(f"[SIOPI] Erro ao recarregar página após OS: {codigo_os}: {e}"
+        f"Possível instabilidade no Sistema. Erro: {str(e)}."             
+                     , exc_info=True)
+        raise
+
+    logger.info(
+    f"[CHECKPOINT] OS {codigo_os} | Cliente: {nome_cliente} | "
+    f"Matrícula: {matricula} | Status: {status}")
      
     return {
         "os": codigo_os,
