@@ -1,3 +1,4 @@
+from logging import config
 from playwright.sync_api import sync_playwright
 from dotenv import load_dotenv
 import os   
@@ -6,18 +7,20 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import datetime
-import time
+from logger import logger
+from config import Urls, Timeouts, Locators_RAUZEE, Locators_SIOPI, formatters
 
-# CONFIGURAÇÃO
+# Carrega variáveis de ambiente
 load_dotenv()
 
-URL_RAUZEE = os.getenv("URL_RAUZEE")
-URL_SIOPI = os.getenv("URL_SIOPI")
+# Configurações
+URL_SIOPI = config.URL_SIOPI
+URL_RAUZEE = config.URL_RAUZEE
 
-RAUZEE_USER = os.getenv("RAUZEE_USER")
-RAUZEE_PASS = os.getenv("RAUZEE_PASS")
-SIOPI_USER = os.getenv("SIOPI_USER")
-SIOPI_PASS = os.getenv("SIOPI_PASS")
+SIOPI_USER = config.SIOPI_USER
+SIOPI_PASS = config.SIOPI_PASS
+RAUZEE_USER = config.RAUZEE_USER
+RAUZEE_PASS = config.RAUZEE_PASS
 
 # LOGIN RAUZEE
 
@@ -28,10 +31,10 @@ def login_rauzee(page):
     page.goto(URL_RAUZEE)
 
     # Aguarda os campos existirem
-    page.wait_for_selector("#email", timeout=20000)
+    page.wait_for_selector("#email", timeout=Timeouts["PADRAO"])
     page.fill("#email", RAUZEE_USER)
 
-    page.wait_for_selector("#password", timeout=20000)
+    page.wait_for_selector("#password", timeout=Timeouts["PADRAO"])
     page.fill("#password", RAUZEE_PASS)
 
     page.get_by_text("Acessar").click()
@@ -40,16 +43,16 @@ def login_rauzee(page):
 # LOGIN SIOPI
 
 def login_siopi(page):
-    if not SIOPI_USER or not SIOPI_PASS:
+    if not SIOPI_USER or not SIOPI_PASS or SIOPI_USER == "xxxx" or SIOPI_PASS == "xxxx":
         raise Exception("Credenciais do SIOPI não encontradas no arquivo .env")
 
     page.goto(URL_SIOPI)
 
     # Aguarda os campos existirem
-    page.wait_for_selector("#username", timeout=20000)
+    page.wait_for_selector("#username", timeout=Timeouts["PADRAO"])
     page.fill("#username", SIOPI_USER)
 
-    page.wait_for_selector("#password", timeout=20000)
+    page.wait_for_selector("#password", timeout=Timeouts["PADRAO"])
     page.fill("#password", SIOPI_PASS)
 
     page.get_by_text("Entrar").click()
@@ -63,22 +66,22 @@ def get_siopi_frame(page, tentativas=10):
         for frame in page.frames:
             if "mantemAlertaOriginacao.do" in frame.url:
                 return frame
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(Timeouts["MEDIO"])
 
     raise Exception("Frame principal do SIOPI não encontrado")
 
 def abrir_menu_e_navegar(page):
     frame = get_siopi_frame(page)
 
-    frame.wait_for_selector("#btn_menu", timeout=20000)
+    frame.wait_for_selector("#btn_menu", Timeouts["PADRAO"])
     frame.locator("#btn_menu").click(force=True)
-    frame.wait_for_timeout(800)
+    frame.wait_for_timeout(Timeouts["CURTO"])
 
     frame.get_by_text("Serviços").hover()
-    frame.wait_for_timeout(400)
+    frame.wait_for_timeout(Timeouts["CURTO"])
 
     frame.get_by_text("Cadastro de Imóveis").hover()
-    frame.wait_for_timeout(400)
+    frame.wait_for_timeout(Timeouts["CURTO"])
 
     frame.get_by_text("Ordens de Serviço de Engenharia").click()
     frame.wait_for_load_state("networkidle")
@@ -88,11 +91,11 @@ def consultar_os(page, codigo_os):
     
     frame.fill("#num_os", codigo_os)
     frame.locator("#botao0").click(force=True)
-    frame.wait_for_timeout(2000)
+    frame.wait_for_timeout(Timeouts["LONGO"])
 
     frame.get_by_text(codigo_os).click()
     frame.wait_for_load_state("networkidle")
-    frame.wait_for_timeout(2000)
+    frame.wait_for_timeout(Timeouts["LONGO"])
 
     # coleta status da OS
     status = frame.locator(
@@ -116,7 +119,7 @@ def consultar_os(page, codigo_os):
    
     # volta para tela inicial
     page.reload()
-    frame.wait_for_timeout(400)
+    frame.wait_for_timeout(Timeouts["PADRAO"])
      
     return {
         "os": codigo_os,
@@ -130,43 +133,43 @@ def consultar_os(page, codigo_os):
 
 def abrir_pesquisa_e_engenharias(page):
     page.wait_for_load_state("networkidle")
-    page.locator('input[placeholder="Pesquisar..."]').click(force=True)
-    page.wait_for_timeout(500)
+    page.locator(Locators_RAUZEE["search_button"]).click(force=True)
+    page.wait_for_timeout(Timeouts["CURTO"])
 
-    page.locator("text=Listar engenharias").click(force=True)
+    page.locator(Locators_RAUZEE["engenharias_shortcut"]).click(force=True)
 
     page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(800)
+    page.wait_for_timeout(Timeouts["CURTO"])
 
 def filtrar_engenharias(page):
     # 1. Localiza o bloco que contém o label STATUS
     status_container = page.locator(
-        "text=STATUS"
+        Locators_RAUZEE["status_filter"]
     ).locator("..")  # sobe para o container pai
 
     # 2. Abre o multiselect
-    status_container.locator("input.multiselect-search").click(force=True)
-    page.wait_for_timeout(500)
+    status_container.locator(Locators_RAUZEE["multiselect_input"]).click(force=True)
+    page.wait_for_timeout(Timeouts["CURTO"])
 
     # 3. Clica na opção "Solicitada"
-    page.locator("li:has-text('Solicitada')").click(force=True)
+    page.locator(Locators_RAUZEE["status_busca"]).click(force=True)
 
     page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(800)
+    page.wait_for_timeout(Timeouts["MEDIO"])
 
     page.keyboard.press("Escape")
 
 def extrair_codigos_os(page):
     codigos = []
 
-    tabela = page.locator("table")
-    linhas = tabela.locator("tbody tr")
+    tabela = page.locator(Locators_RAUZEE["tabela"])
+    linhas = tabela.locator(Locators_RAUZEE["tabela_linhas"])
 
     total = linhas.count()
 
     for i in range(total):
         linha = linhas.nth(i)
-        colunas = linha.locator("td")
+        colunas = linha.locator(Locators_RAUZEE["linha_os_codigo"])
         qtd_colunas = colunas.count()
 
         if qtd_colunas < 6:
@@ -175,7 +178,7 @@ def extrair_codigos_os(page):
         texto = colunas.nth(5).inner_text().strip()
 
         # Regex do padrão SIOPI
-        match = re.search(r"\d{4}\.\d{4}\.\d+\/\d{4}\.\d{2}\.\d{2}", texto)
+        match = re.search(formatters["OS Codigo"], texto)
         if match:
             codigos.append(match.group())
 
@@ -185,8 +188,8 @@ def extrair_codigos_os(page):
 
 def montar_corpo_email(resultados):
     linhas = []
-    data = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
-    linhas.append(f"Relatório Automático - Consulta em: {data}\n")
+    data_consulta = datetime.datetime.now().strftime(formatters["data_consulta"])
+    linhas.append(f"Relatório Automático - Consulta em: {data_consulta}\n")
 
     for r in resultados:
         linhas.append(f"🔢 OS: {r['os']}")
@@ -221,6 +224,8 @@ def enviar_email(resultados):
 # EXECUÇÃO
 
 with sync_playwright() as p:
+    logger.info("Início da execução.")
+
     browser = p.chromium.launch(headless=False)
     context = browser.new_context()
     page = context.new_page()
@@ -238,9 +243,20 @@ with sync_playwright() as p:
 
     resultados = []
     for os_codigo in lista_os:
-        abrir_menu_e_navegar(page)
-        dados = consultar_os(page, os_codigo)
-        resultados.append(dados)
+        try:
+            logger.info(f"Iniciando consulta da OS: {os_codigo}")
+            abrir_menu_e_navegar(page)
+            dados = consultar_os(page, os_codigo)
+            resultados.append(dados)
+
+        except Exception as e:
+            logger.error(f"Erro ao consultar OS {os_codigo}: {e}", 
+                          exc_info=True)
+            
+            resultados.append({
+                "os": os_codigo,
+                "status": "Erro na consulta"
+            })
 
     # Parte 3 - Envio dos resultados via email
     enviar_email(resultados)
