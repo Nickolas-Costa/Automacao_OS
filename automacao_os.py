@@ -1,4 +1,3 @@
-from logging import config
 from playwright.sync_api import sync_playwright
 from dotenv import load_dotenv
 import os   
@@ -8,19 +7,19 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import datetime
 from logger import logger
-from config import Urls, Timeouts, Locators_RAUZEE, Locators_SIOPI, formatters
+from config import Timeouts, Locators_RAUZEE, Locators_SIOPI, formatters
 
 # Carrega variáveis de ambiente
 load_dotenv()
 
 # Configurações
-URL_SIOPI = config.URL_SIOPI
-URL_RAUZEE = config.URL_RAUZEE
+URL_SIOPI = os.getenv("URL_SIOPI")
+URL_RAUZEE = os.getenv("URL_RAUZEE")
 
-SIOPI_USER = config.SIOPI_USER
-SIOPI_PASS = config.SIOPI_PASS
-RAUZEE_USER = config.RAUZEE_USER
-RAUZEE_PASS = config.RAUZEE_PASS
+SIOPI_USER = os.getenv("SIOPI_USER")
+SIOPI_PASS = os.getenv("SIOPI_PASS")
+RAUZEE_USER = os.getenv("RAUZEE_USER")
+RAUZEE_PASS = os.getenv("RAUZEE_PASS")
 
 # LOGIN RAUZEE
 
@@ -85,13 +84,17 @@ def get_siopi_frame(page, tentativas=10):
                 return frame
         page.wait_for_timeout(Timeouts["MEDIO"])
 
+    logger.critical(
+    "[SIOPI] Frame principal não encontrado após múltiplas tentativas. "
+    "Sistema possivelmente fora do ar ou estrutura alterada.")
+
     raise RuntimeError("Frame principal do SIOPI não encontrado após múltiplas tentativas."
     "Possível mudança estrutural ou indisponibilidade do sistema.")
 
 def abrir_menu_e_navegar(page):
     frame = get_siopi_frame(page)
 
-    frame.wait_for_selector(Locators_SIOPI["menu"], Timeouts["PADRAO"])
+    frame.wait_for_selector(Locators_SIOPI["menu"], timeout=Timeouts["PADRAO"])
     frame.locator(Locators_SIOPI["menu"]).click(force=True)
     frame.wait_for_timeout(Timeouts["CURTO"])
 
@@ -142,11 +145,19 @@ def consultar_os(page, codigo_os):
         page.reload(timeout=Timeouts["LONGO"])
         frame.wait_for_timeout(Timeouts["PADRAO"])
         logger.info(f"[SIOPI] Reload executado com sucesso após OS: {codigo_os}")
+
     except Exception as e:
         logger.error(f"[SIOPI] Erro ao recarregar página após OS: {codigo_os}: {e}"
         f"Possível instabilidade no Sistema. Erro: {str(e)}."             
                      , exc_info=True)
-        raise
+        
+        return {
+        "os": codigo_os,
+        "cliente": None,
+        "matricula": None,
+        "data_abertura": None,
+        "status": "Erro pós-consulta (instabilidade SIOPI)"
+    }
 
     logger.info(
     f"[CHECKPOINT] OS {codigo_os} | Cliente: {nome_cliente} | "
@@ -173,20 +184,22 @@ def abrir_pesquisa_e_engenharias(page):
     page.wait_for_timeout(Timeouts["CURTO"])
 
 def filtrar_engenharias(page):
-    # 1. Localiza o bloco que contém o label STATUS
-    status_container = page.locator(
-        Locators_RAUZEE["status_filter"]
-    ).locator("..")  # sobe para o container pai
+    # 1. Localiza o bloco que contém o label Status
+    status_block = page.locator(
+        "label", has_text="Status"
+        ).locator("..")  
 
     # 2. Abre o multiselect
-    status_container.locator(Locators_RAUZEE["multiselect_input"]).click(force=True)
+    status_block.locator(
+        ".multiselect-search").first.click(force=True)
     page.wait_for_timeout(Timeouts["CURTO"])
 
     # 3. Clica na opção "Solicitada"
-    page.locator(Locators_RAUZEE["status_busca"]).click(force=True)
+    page.locator(".multiselect-option", has_text="Solicitada"
+                 ).click(force=True)
 
     page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(Timeouts["MEDIO"])
+    page.wait_for_timeout(Timeouts["LONGO"])
 
     page.keyboard.press("Escape")
 
@@ -224,11 +237,18 @@ def montar_corpo_email(resultados):
 
     for r in resultados:
         linhas.append(f"🔢 OS: {r['os']}")
-        linhas.append(f"👤 Cliente: {r['cliente']}")
-        linhas.append(f"🏠 Matrícula: {r['matricula']}")
-        linhas.append(f"📅 Data de Abertura: {r['data_abertura']}")
-        linhas.append(f"ℹ️ Status Atual: {r['status']}")
+        linhas.append(f"👤 Cliente: {r['cliente'] or 'Indisponível'}")
+        linhas.append(f"🏠 Matrícula: {r['matricula'] or 'Indisponível'}")
+        linhas.append(f"📅 Data de Abertura: {r['data_abertura'] or 'Indisponível'}")
+
+        if "Erro" in r['status']:
+            linhas.append("⚠️ Houve um erro ao consultar esta OS. "
+                          "Verifique o log para mais detalhes.")
+        else: 
+            linhas.append(f"ℹ️ Status da OS: {r['status']}")
+
         linhas.append("-" * 60)
+
 
     return "\n".join(linhas)
 
@@ -265,7 +285,6 @@ with sync_playwright() as p:
     login_rauzee(page)
     abrir_pesquisa_e_engenharias(page)
     filtrar_engenharias(page)
-    extrair_codigos_os(page)
     lista_os = extrair_codigos_os(page)
         
     # Parte 2 - SIOPI
@@ -293,4 +312,4 @@ with sync_playwright() as p:
     enviar_email(resultados)
     browser.close()
 
-    print("Processo concluído com sucesso! Verifique seu email.")
+    print("👌Processo concluído com sucesso! Verifique seu email.")

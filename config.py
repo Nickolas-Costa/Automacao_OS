@@ -1,18 +1,12 @@
 import os
 import re
 
-# URLs
-Urls = {
-    "SIOPI": os.getenv("URL_SIOPI"),
-    "RAUZEE": os.getenv("URL_RAUZEE"),
-}
-
 # TIMEOUTS
 Timeouts = {
-    "PADRAO": 2_000,
-    "CURTO": 500,
-    "MEDIO": 800,
-    "LONGO": 5_000,
+    "PADRAO": 1_000,
+    "CURTO": 300,
+    "MEDIO": 500,
+    "LONGO": 3_000,
 }
 
 # SELETORES RAUZEE
@@ -22,8 +16,7 @@ Locators_RAUZEE = {
     "botao_acessar": "Acessar",
     "search_button": 'input[placeholder="Pesquisar..."]',
     "engenharias_shortcut": "text=Listar engenharias",
-    "status_filter": "xpath=//*[@aria-labelledby='assist']",
-    "multiselect_input": "input.multiselect-search",
+    "multiselect_input": 'Status',
     "status_busca": "text=Solicitada",
     "tabela": "table",
     "tabela_linhas": "tbody tr",
@@ -37,7 +30,7 @@ Locators_SIOPI = {
     "login_senha": "#password",
     "botao_entrar": 'Entrar',
     "menu": "#btn_menu",
-    "submenu_servicos": 'text=Serviços',
+    "submenu_servicos": 'Serviços',
     "submenu_imoveis": 'Cadastro de Imóveis',
     "submenu_os": 'Ordens de Serviço de Engenharia',
     "input_os": "#num_os",
