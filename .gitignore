@@ -1,9 +1,17 @@
+# Variáveis de ambiente
 .venv/
 .env
+
 # arquivos do sistema
 .DS_Store
 Thumbs.db
-os_list.txt
 
-Rauzee_poc.py
-siopi_poc.py
+# logs
+logs/
+*.log
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+
