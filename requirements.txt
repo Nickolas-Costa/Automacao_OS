@@ -1,6 +1,2 @@
 playwright
 python-dotenv
-re
-smtplib
-MIMEText
-MIMEMultipart

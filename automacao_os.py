@@ -133,9 +133,24 @@ def consultar_os(page, codigo_os):
         Locators_SIOPI["matricula"]
     ).inner_text().strip()
 
+    # coleta cartorio da OS
+    cartorio = frame.locator(
+        Locators_SIOPI["cartorio"]
+        ).inner_text().strip()
+
     # coleta data abertura da OS
     data_abertura = frame.locator(
         Locators_SIOPI["data_abertura"]
+    ).inner_text().strip()
+
+    # coleta nome da empresa contratada
+    nome_empresa = frame.locator(
+        Locators_SIOPI["nome_empresa"]
+    ).inner_text().strip()
+
+    # coleta CNPJ da empresa contratada
+    cnpj_empresa = frame.locator(
+        Locators_SIOPI["CNPJ_empresa"]
     ).inner_text().strip()
    
     logger.info(f"[SIOPI] Finalizando consulta da OS {codigo_os}. Tentando recarregar página.")
@@ -155,7 +170,10 @@ def consultar_os(page, codigo_os):
         "os": codigo_os,
         "cliente": None,
         "matricula": None,
+        "cartorio": None,
         "data_abertura": None,
+        "nome_empresa": None,
+        "CNPJ_empresa": None,
         "status": "Erro pós-consulta (instabilidade SIOPI)"
     }
 
@@ -167,7 +185,10 @@ def consultar_os(page, codigo_os):
         "os": codigo_os,
         "cliente": nome_cliente,
         "matricula": matricula,
+        "cartorio": cartorio,
         "data_abertura": data_abertura,
+        "nome_empresa": nome_empresa,
+        "CNPJ_empresa": cnpj_empresa,
         "status": status
     }
 
@@ -239,7 +260,10 @@ def montar_corpo_email(resultados):
         linhas.append(f"🔢 OS: {r['os']}")
         linhas.append(f"👤 Cliente: {r['cliente'] or 'Indisponível'}")
         linhas.append(f"🏠 Matrícula: {r['matricula'] or 'Indisponível'}")
+        linhas.append(f"📜 Cartório: {r['cartorio'] or 'Indisponível'}")
         linhas.append(f"📅 Data de Abertura: {r['data_abertura'] or 'Indisponível'}")
+        linhas.append(f"🏢 Empresa Contratada: {r['nome_empresa'] or 'Indisponível'}")
+        linhas.append(f"🆔 CNPJ da Empresa: {r['CNPJ_empresa'] or 'Indisponível'}")
 
         if "Erro" in r['status']:
             linhas.append("⚠️ Houve um erro ao consultar esta OS. "

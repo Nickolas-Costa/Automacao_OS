@@ -38,7 +38,10 @@ Locators_SIOPI = {
     "status_OS": 'xpath=//*[@id="formulario"]/fieldset/table[3]/tbody/tr/td[2]',
     "nome_cliente": 'xpath=//*[@id="formulario"]/fieldset/table[6]/tbody/tr[2]/td[2]',
     "matricula": 'xpath=//*[@id="formulario"]/fieldset/table[5]/tbody/tr[1]/td[2]',
+    "cartorio": 'xpath=//*[@id="formulario"]/fieldset/table[5]/tbody/tr[1]/td[4]',
     "data_abertura": 'xpath=//*[@id="formulario"]/fieldset/table[1]/tbody/tr[1]/td[4]',
+"nome_empresa": 'xpath=//*[@id="formulario"]/fieldset/table[4]/tbody/tr[1]/td[2]',
+    "CNPJ_empresa": 'xpath=//*[@id="formulario"]/fieldset/table[4]/tbody/tr[1]/td[4]',
 }
 
 formatters = {
