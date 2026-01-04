@@ -5,7 +5,7 @@ import re
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import datetime
+import datetime as dt
 from logger import logger
 from config import Timeouts, Locators_RAUZEE, Locators_SIOPI, formatters
 
@@ -122,6 +122,11 @@ def consultar_os(page, codigo_os):
     status = frame.locator(
             Locators_SIOPI["status_OS"]
         ).inner_text()
+    
+    # coleta CPF cliente da OS
+    cpf_cliente = frame.locator(
+            Locators_SIOPI["CPF_cliente"]
+        ).inner_text()
 
     # coleta nome cliente da OS
     nome_cliente = frame.locator(
@@ -169,6 +174,7 @@ def consultar_os(page, codigo_os):
         return {
         "os": codigo_os,
         "cliente": None,
+        "cpf_cliente": None,
         "matricula": None,
         "cartorio": None,
         "data_abertura": None,
@@ -179,11 +185,13 @@ def consultar_os(page, codigo_os):
 
     logger.info(
     f"[CHECKPOINT] OS {codigo_os} | Cliente: {nome_cliente} | "
-    f"Matrícula: {matricula} | Status: {status}")
+    f"CPF: {cpf_cliente} | Matrícula: {matricula} | Cartório: {cartorio} | "
+    f"Status: {status}")
      
     return {
         "os": codigo_os,
         "cliente": nome_cliente,
+        "cpf_cliente": cpf_cliente,
         "matricula": matricula,
         "cartorio": cartorio,
         "data_abertura": data_abertura,
@@ -252,29 +260,62 @@ def extrair_codigos_os(page):
 # FUNÇÕES EMAIL
 
 def montar_corpo_email(resultados):
+    data_consulta = dt.datetime.now().strftime(formatters["data_consulta"])
+
     linhas = []
-    data_consulta = datetime.datetime.now().strftime(formatters["data_consulta"])
-    linhas.append(f"Relatório Automático - Consulta em: {data_consulta}\n")
 
     for r in resultados:
-        linhas.append(f"🔢 OS: {r['os']}")
-        linhas.append(f"👤 Cliente: {r['cliente'] or 'Indisponível'}")
-        linhas.append(f"🏠 Matrícula: {r['matricula'] or 'Indisponível'}")
-        linhas.append(f"📜 Cartório: {r['cartorio'] or 'Indisponível'}")
-        linhas.append(f"📅 Data de Abertura: {r['data_abertura'] or 'Indisponível'}")
-        linhas.append(f"🏢 Empresa Contratada: {r['nome_empresa'] or 'Indisponível'}")
-        linhas.append(f"🆔 CNPJ da Empresa: {r['CNPJ_empresa'] or 'Indisponível'}")
+        erro = "Erro" in r["status"]
+        cor_linha = "#f8d7da" if erro else "#d4edda"
+        status_formatado = r["status"]
 
-        if "Erro" in r['status']:
-            linhas.append("⚠️ Houve um erro ao consultar esta OS. "
-                          "Verifique o log para mais detalhes.")
-        else: 
-            linhas.append(f"ℹ️ Status da OS: {r['status']}")
+        linhas.append(f"""
+        <tr style="background-color:{cor_linha}">
+            <td>{r['os']}</td>
+            <td>{r['cliente'] or 'Indisponível'}</td>
+            <td>{r['cpf_cliente'] or 'Indisponível'}</td>
+            <td>{r['matricula'] or 'Indisponível'}</td>
+            <td>{r['cartorio'] or 'Indisponível'}</td>
+            <td>{r['data_abertura'] or 'Indisponível'}</td>
+            <td>{r['nome_empresa'] or 'Indisponível'}</td>
+            <td>{r['CNPJ_empresa'] or 'Indisponível'}</td>
+            <td><strong>{status_formatado}</strong></td>
+        </tr>
+        """)
 
-        linhas.append("-" * 60)
+    return f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; font-size: 13px;">
+        <h2>📄 Relatório Automático – Consulta de OS</h2>
+        <p><strong>Data da consulta:</strong> {data_consulta}</p>
 
+        <table border="1" cellpadding="6" cellspacing="0"
+               style="border-collapse: collapse; width: 100%; text-align: left;">
+            <thead style="background-color:#343a40; color:white;">
+                <tr>
+                    <th>OS</th>
+                    <th>Cliente</th>
+                    <th>CPF</th>
+                    <th>Matrícula</th>
+                    <th>Cartório</th>
+                    <th>Data de Abertura</th>
+                    <th>Empresa</th>
+                    <th>CNPJ</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {''.join(linhas)}
+            </tbody>
+        </table>
 
-    return "\n".join(linhas)
+        <br>
+        <p style="font-size:12px; color:#555;">
+            ⚠️ Linhas em vermelho indicam erro ou instabilidade na consulta.
+        </p>
+    </body>
+    </html>
+    """
 
 def enviar_email(resultados):
     corpo = montar_corpo_email(resultados)
@@ -285,7 +326,7 @@ def enviar_email(resultados):
     msg["Subject"] = "Relatório Automático - Consultas OS SIOPI"
     
 
-    msg.attach(MIMEText(corpo, "plain"))
+    msg.attach(MIMEText(corpo, "html"))
 
 
     with smtplib.SMTP(os.getenv("EMAIL_HOST"), int(os.getenv("EMAIL_PORT"))) as server:
@@ -296,15 +337,36 @@ def enviar_email(resultados):
         )
         server.send_message(msg)
 
+# FUNÇÕES DE EXECUÇÃO
+def banner_inicial():
+    separador_maior = "=" * 80
+    print(separador_maior)
+    print("     AUTOMACAO DE CONSULTA DE OS - SIOPI     ")
+    print(separador_maior)
+    print("📅 Data:", dt.datetime.now().strftime(formatters["data_consulta"]))
+    print(separador_maior)
+    print()
+
+def banner_final():
+    separador_maior = "=" * 80
+    print()
+    print(separador_maior)
+    print("     ✔ PROCESSO FINALIZADO COM SUCESSO      ")
+    if any(r["status"] == "ERRO" for r in resultados):
+        print("⚠ ATENÇÃO: Uma(s) OS retornar(am) erro verifique os logs de execução.")
+
+    print(separador_maior)
+
 # EXECUÇÃO
 
 with sync_playwright() as p:
+    banner_inicial()
     logger.info("Início da execução.")
 
     browser = p.chromium.launch(headless=False)
     context = browser.new_context()
     page = context.new_page()
-    
+
     # Parte 1 - RAUZEE
     login_rauzee(page)
     abrir_pesquisa_e_engenharias(page)
