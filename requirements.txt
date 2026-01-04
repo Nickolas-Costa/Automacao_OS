@@ -1,9 +1,6 @@
 playwright
 python-dotenv
-time
 re
-os
 smtplib
 MIMEText
 MIMEMultipart
-datetime
